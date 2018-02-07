@@ -14,7 +14,9 @@ function Think()
 
 	-- Find creeps (Lowest enemy and move to him and prepare kill if no enemy is near otherwise play saver!)
 
-	if GetUnitToLocationDistance(Bot,FrontPos)
+	if GetUnitToLocationDistance(Bot,FrontPos) < range /2 then -- Fixed that pretty fast!
+
+	end
 
 	if (Bot:GetCurrentActionType() == BOT_ACTION_TYPE_NONE or Bot:GetCurrentActionType() == BOT_ACTION_TYPE_IDLE or (Bot:IsAlive() and Bot:GetCurrentActionType() == BOT_ACTION_TYPE_MOVE_TO and Bot:GetVelocity() == Vector(0,0)) and not Bot:IsUsingAbility()) then	
 		print(Bot:GetCurrentActionType(),BOT_ACTION_TYPE_NONE,BOT_ACTION_TYPE_IDLE,Bot:IsStuck(),Bot:IsUsingAbility(),Bot:GetVelocity())
