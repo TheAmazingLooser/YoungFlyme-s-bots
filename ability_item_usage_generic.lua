@@ -141,7 +141,7 @@ local Items = {
 					for i=1,#trees do
 						if GetUnitToLocationDistance(tower[i],GetTreeLocation(trees[i])) < towerrange and GetHeightLevel(Bot:GetLocation()) == GetHeightLevel(GetTreeLocation(trees[i])) then
 							if Bot:GetActiveMode() == BOT_MODE_RETREAT then
-								if Bot:IsFacingLocation( GetTreeLocation(trees[i]),45) then
+								if Bot:IsFacingLocation( GetTreeLocation(trees[i]),2) then
 									Bot:Action_UseAbilityOnTree(item,trees[i])
 									Bot.IsUsingTango = true
 									return
@@ -198,7 +198,7 @@ local Items = {
 						for i=1,#trees do
 							if GetUnitToLocationDistance(tower[i],GetTreeLocation(trees[i])) < towerrange and GetHeightLevel(Bot:GetLocation()) == GetHeightLevel(GetTreeLocation(trees[i])) then
 								if Bot:GetActiveMode() == BOT_MODE_RETREAT then
-									if Bot:IsFacingLocation( GetTreeLocation(trees[i]),45) then
+									if Bot:IsFacingLocation( GetTreeLocation(trees[i]),2) then
 										Bot:Action_UseAbilityOnTree(item,trees[i])
 										Bot.IsUsingTango = true
 										return
@@ -581,18 +581,18 @@ local Items = {
 		end
 	end
 	,
-	["item_power_treads"] = function() -- Mostly, its hardly buggy in the retreat... buy why?
+	["item_power_treads"] = function()
 		if CanUseItem("item_power_treads") then
 			item = Bot:GetItemInSlot(Bot:FindItemSlot("item_power_treads"))
 			if Bot:Mode(BOT_MODE_RETREAT) and item:GetPowerTreadsStat() ~= ATTRIBUTE_STRENGTH and Bot:WasRecentlyDamagedByAnyHero(5.0) then
 				Bot:Action_UseAbility(item)
 				return
-			elseif mode == BOT_MODE_ATTACK and CanSwitchPTStat(item) then
+			elseif Bot:Mode(BOT_MODE_ATTACK) and CanSwitchPTStat(item) then
 				Bot:Action_UseAbility(item)
 				return
 			else
 				local enemies = Bot:GetNearbyHeroes( 1300, true, BOT_MODE_NONE )
-				if #enemies == 0 and  mode ~= BOT_MODE_RETREAT and CanSwitchPTStat(item)  then
+				if #enemies == 0 and not Bot:Mode(BOT_MODE_RETREAT) and CanSwitchPTStat(item)  then
 					Bot:Action_UseAbility(item)
 					return
 				end
@@ -1727,6 +1727,17 @@ local Items = {
 		end
 	end
 	-- I am done o.O
+	-- Ok nope, I just missed up 2 items
+	,
+	["item_tpscroll"] = function() -- Wont make that :c 
+		if CanUseItem("item_tpscroll") then
+			item = Bot:GetItemInSlot(Bot:FindItemSlot("item_tpscroll"))
+
+			if Bot:Mode(BOT_MODE_SECRET_SHOP,BOT_MODE_PUSH_TOWER_TOP,BOT_MODE_PUSH_TOWER_MID,BOT_MODE_PUSH_TOWER_BOT,BOT_MODE_DEFEND_TOWER_TOP,BOT_MODE_DEFEND_TOWER_MID,BOT_MODE_DEFEND_TOWER_BOT,BOT_MODE_EVASIVE_MANEUVERS) and Bot:GetActiveModeDesire() >= BOT_MODE_DESIRE_MODERATE then
+				-- Ok we have to defend, push, goto secret or
+			end
+		end
+	end
 }
 
 function UseItems()

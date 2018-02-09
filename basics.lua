@@ -5152,11 +5152,12 @@ function CDOTA_Bot_Script:GetIncommingDamageWithDistance(Distance)
 end
 
 function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
+	local Bot = GetBot()
+	local MagicDamage = 0 
+	local PhysicDamage = 0 
+	local PureDamage = 0
 	Distance = Distance or 500
 	if self:GetIncomingTrackingProjectiles() ~= nil then
-		local MagicDamage = 0 
-		local PhysicDamage = 0 
-		local PureDamage = 0
 		for _,v in pairs(self:GetIncomingTrackingProjectiles()) do
 			if GetUnitToLocationDistance(self,v.location) < Distance then
 				if v.is_attack then
@@ -5169,15 +5170,56 @@ function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
 				end
 			end
 		end
-		local dmg = {
-			["Physic"] = PhysicDamage,
-			["Magic"] = MagicDamage,
-			["Pure"] = PureDamage,
-			["All"] = PhysicDamage+MagicDamage+PureDamage,
-		}
-		return dmg -- There can only be physic damage calculated (Mb i will add the other later, but this require much work and much ability hardcodig stuff which is also hard to stay up to date)
 	end
+
+	-- Get All nearby enemy creeps
+	-- if it target us then
+	-- Get their last attack time +- attacks per second
+	for _,v in pairs(Bot:GetNearbyCreeps( 1600, true )) do
+		if v:GetAttackTarget() == self then -- we are his target!
+			local CurrentTime = GameTime()
+			local LastAttackTime = v:GetLastAttackTime()
+			if LastAttackTime+v:GetSecondsPerAttack() < CurrentTime then -- Can shoot/hit us!
+				if v:GetAnimActivity() == ACTIVITY_ATTACK or v:GetAnimActivity() == ACTIVITY_ATTACK2 then -- And is attacking (tracked via animation)
+					local AttackPoint = v:GetAttackPoint() -- Needed time for a attack. (Perfect useable with v:GetAnimCycle())
+					local AttackAnimationPoint = v:GetAnimCycle() -- starts from 0 up to 1 (like percents)
+					local RealNeededTime = AttackPoint - (AttackPoint*AttackAnimationPoint)
+					if RealNeededTime < Time then
+						PhysicDamage = PhysicDamage + self:GetActualIncomingDamage(v:GetAttackDamage() + v:GetBaseDamageVariance(), DAMAGE_TYPE_PHYSICAL)
+					end
+				end
+			end
+		end
+	end
+
+	-- Same with heroes for OPTIMA lasthitting :3 muhaha ^-^
+	for _,v in pairs(Bot:GetNearbyHeroes( 1600, true,BOT_MODE_NONE)) do
+		if v:GetAttackTarget() == self then -- we are his target!
+			local CurrentTime = GameTime()
+			local LastAttackTime = v:GetLastAttackTime()
+			if LastAttackTime+v:GetSecondsPerAttack() < CurrentTime then -- Can shoot/hit us!
+				if v:GetAnimActivity() == ACTIVITY_ATTACK or v:GetAnimActivity() == ACTIVITY_ATTACK2 then -- And is attacking (tracked via animation)
+					local AttackPoint = v:GetAttackPoint() -- Needed time for a attack. (Perfect useable with v:GetAnimCycle())
+					local AttackAnimationPoint = v:GetAnimCycle() -- starts from 0 up to 1 (like percents)
+					local RealNeededTime = AttackPoint - (AttackPoint*AttackAnimationPoint)
+					if RealNeededTime < Time then
+						PhysicDamage = PhysicDamage + self:GetActualIncomingDamage(v:GetAttackDamage() + v:GetBaseDamageVariance(), DAMAGE_TYPE_PHYSICAL)
+					end
+				end
+			end
+		end
+	end
+
+
+	local dmg = {
+		["Physic"] = PhysicDamage,
+		["Magic"] = MagicDamage,
+		["Pure"] = PureDamage,
+		["All"] = PhysicDamage+MagicDamage+PureDamage,
+	}
+	return dmg -- There can only be physic damage calculated (Mb i will add the other later, but this require much work and much ability hardcodig stuff which is also hard to stay up to date)
 end
+
 
 function CDOTA_Bot_Script:GotItem(itemName)
 	for i=0,15 do
