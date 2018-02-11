@@ -5297,6 +5297,46 @@ function CDOTA_Bot_Script:GetDPS()
 	return AttackDamage/AttackSpeed
 end
 
+function CDOTA_Bot_Script:GetAliveTower(Lane,Enemy)
+
+	local Team = self:GetTeam()
+	if Enemy then
+		if Team == TEAM_RADIANT then
+			Team = TEAM_DIRE
+		elseif Team == TEAM_DIRE then
+			Team = TEAM_RADIANT
+		end
+	end
+	local Tower = TOWER_BASE_2
+	if Lane == LANE_TOP then
+		Tower = TOWER_TOP_1
+	elseif Lane == LANE_MID then
+		Tower = TOWER_MID_1
+
+	elseif Lane == LANE_BOT then
+		Tower = TOWER_BOT_1
+		while not IsTowerAlive(Team,Tower) do
+			Tower = GetTowerNext(Tower)
+			if Tower == nil then break end
+		end
+		return Tower
+	end
+end
+
+function CDOTA_Bot_Script:GetRotationAngle(Pos)
+
+	local Rotation = math.rad(self:GetFacing())
+
+	local UPos = self:GetLocation()
+	local AngleToRotation = math.abs(math.atan2(Pos.y - UPos.y, Pos.x- UPos.x) - Rotation)
+
+	if AngleToRotation > math.pi then
+		AngleToRotation = math.abs((math.pi * 2) - AngleToRotation)
+	end
+
+	return AngleToRotation
+
+end
 
 -----------------------------------------------------------
 -- Custom Botvars which are pretty much needed for my bots.
@@ -5450,3 +5490,7 @@ function GetTowerNext(Tower)
 	end
 end
 ---------------------------------------------------------------
+-- Got it from https://dev.dota2.com/showthread.php?t=284507
+function GetLocationToLocationDistance (v1, v2) 
+	return math.sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
+end
