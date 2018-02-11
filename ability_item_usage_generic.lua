@@ -1729,15 +1729,24 @@ local Items = {
 	-- I am done o.O
 	-- Ok nope, I just missed up 2 items
 	,
-	["item_tpscroll"] = function() -- Wont make that :c 
+	--[[["item_tpscroll"] = function() -- Wont make that :c 
 		if CanUseItem("item_tpscroll") then
 			item = Bot:GetItemInSlot(Bot:FindItemSlot("item_tpscroll"))
 
-			if Bot:Mode(BOT_MODE_SECRET_SHOP,BOT_MODE_PUSH_TOWER_TOP,BOT_MODE_PUSH_TOWER_MID,BOT_MODE_PUSH_TOWER_BOT,BOT_MODE_DEFEND_TOWER_TOP,BOT_MODE_DEFEND_TOWER_MID,BOT_MODE_DEFEND_TOWER_BOT,BOT_MODE_EVASIVE_MANEUVERS) and Bot:GetActiveModeDesire() >= BOT_MODE_DESIRE_MODERATE then
-				-- Ok we have to defend, push, goto secret or
+			if Bot:Mode(BOT_MODE_SECRET_SHOP,BOT_MODE_PUSH_TOWER_TOP,BOT_MODE_PUSH_TOWER_MID,BOT_MODE_PUSH_TOWER_BOT,BOT_MODE_DEFEND_TOWER_TOP,BOT_MODE_DEFEND_TOWER_MID,BOT_MODE_DEFEND_TOWER_BOT) and Bot:GetActiveModeDesire() >= BOT_MODE_DESIRE_MODERATE then
+				-- Ok we have to defend, push or goto secret
+				-- Get more detailed information about our target
+				if Bot:Mode(BOT_MODE_SECRET_SHOP) then -- We wanna go to secret shop! (And courier is in use or dead?) TODO: Syncronize that with the courier!
+
+				elseif Bot:Mode(BOT_MODE_PUSH_TOWER_TOP) then
+					-- Just check the distance (over 7500 or 5000?)
+					if 
+
+					end
+				end
 			end
 		end
-	end
+	end ]]
 }
 
 function UseItems()
