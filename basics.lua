@@ -5162,6 +5162,9 @@ function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
 			if GetUnitToLocationDistance(self,v.location) < Distance then
 				if v.is_attack then
 					local caster = v.caster or v.player;
+					if caster == 0 then
+
+					end
 					local location = v.location
 					local projSpeed = caster:GetAttackProjectileSpeed()
 					local neededTime = GetUnitToLocationDistance(self,location)/projSpeed

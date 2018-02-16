@@ -280,7 +280,7 @@ function Think()
 						Pos = Vector(4456,3960,352)
 					},
 					["lane_mid_pathcorner_badguys_8"] = { -- This looks pretty close to the tower, creeps can (will) split if we block here! Should We?
-						Next = "lane_mid_pathcorner_badguys_2", -- TODO: Remove this due better blocks
+						Next = "lane_mid_pathcorner_badguys_2", -- Commend removed, for better blocks :3
 						Pos = Vector(2368,1904,320)
 					},
 					["lane_mid_pathcorner_badguys_2"] = {
@@ -444,7 +444,13 @@ function Think()
 		elseif Bot.Block == nil and #Creeps == 0 then
 			local FrontPos = Vector(0,0,0)
 			if Bot:GetTeam() == TEAM_DIRE then
-
+				if Bot:GetAssignedLane() == LANE_TOP then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.23 )
+				elseif Bot:GetAssignedLane() == LANE_MID then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.32 )
+				elseif Bot:GetAssignedLane() == LANE_BOT then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.21 )
+				end
 			elseif Bot:GetTeam() == TEAM_RADIANT then
 				if Bot:GetAssignedLane() == LANE_TOP then
 					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.21 )
