@@ -15,7 +15,7 @@ function Think()
 
 		-- Find creeps (Lowest enemy and move to him and prepare kill if no enemy is near otherwise play saver!)
 
-		if (Bot:GetCurrentActionType() == BOT_ACTION_TYPE_NONE or Bot:GetCurrentActionType() == BOT_ACTION_TYPE_IDLE or (Bot:IsAlive() and Bot:GetCurrentActionType() == BOT_ACTION_TYPE_MOVE_TO and Bot:GetVelocity() == Vector(0,0)) and not Bot:IsUsingAbility()) or GetUnitToLocationDistance(Bot,FrontPos) > Bot:GetAttackRange()/2 then	
+		if (Bot:GetCurrentActionType() == BOT_ACTION_TYPE_NONE or Bot:GetCurrentActionType() == BOT_ACTION_TYPE_IDLE or (Bot:IsAlive() and Bot:GetCurrentActionType() == BOT_ACTION_TYPE_MOVE_TO) and not Bot:IsUsingAbility()) or GetUnitToLocationDistance(Bot,FrontPos) > Bot:GetAttackRange()/2 then	
 			Bot:Action_MoveToLocation(FrontPos) -- Cant return here or we wont make any actions :/
 		elseif GetUnitToLocationDistance(Bot,FrontPos) <= Bot:GetAttackRange()/2 then  -- Anything is false? We just check the Distance and nearby creeps! if they are <= 1 and this creep is under 20% of life go back :3
 			print(GetUnitToLocationDistance(Bot,FrontPos),Bot:GetAttackRange()/2)
@@ -365,15 +365,19 @@ function Think()
 
 		local Creeps = Bot:GetNearbyCreeps(600,false)
 		local BadCreeps = Bot:GetNearbyCreeps(600,true)
+		local Allies = Bot:GetNearbyHeroes(1200,false,BOT_MODE_NONE)
 
 		if #Creeps > 0 and #BadCreeps == 0 and (Bot.Block == nil or Bot.Block) then -- No bad creeps and atleast 1 creep to block
 			-- Get currently aiming waypoint of this creep
-			print(Bot:GetVelocity())
 
 			local CreepWayPoint = GetWaypoint(Creeps)
 			if CreepWayPoint == nil or CreepWayPoint.Pos == nil then return end
 
 			Bot.Block = true
+			local Ally = nil
+			if Allies[1] ~= nil then
+				Ally = Allies[1]
+			end
 
 			-- Get creep which is the nearst creep to the Waypoint
 			-- Sort Table based on the distance!
@@ -387,26 +391,37 @@ function Think()
 				end
 			end
 
-			local DistanceOffset = 10
-			local MovementOffset = 500
+			local DistanceOffset = 50
+			local MovementOffset = 700 -- 1000 is way to much, 500 way to less
+
+			if Bot:GetTeam() == TEAM_RADIANT and Bot:GetAssignedLane() == LANE_BOT then
+				MovementOffset = 850
+			end
 
 			-- After sorting them loop to get the best blocking pos
 			for _,v in pairs(Creeps) do
 				-- 1stly avoid already blocked creeps (blocked by other creeps)
-				if not(v:GetVelocity() == Vector(0,0)) and GetUnitToUnitDistance(v,Bot) > DistanceOffset then
+				if not( not(v:GetAnimActivity() == ACTIVITY_RUN) and GetUnitToUnitDistance2D(v,Bot) > DistanceOffset) then
+
 					local Distance = GetUnitToLocationDistance(v,CreepWayPoint.Pos) + DistanceOffset
 					local HeroDistance = GetUnitToLocationDistance(v,CreepWayPoint.Pos) -- Without the offset!
-
 					local Angle = v:GetRotationAngle(Bot:GetLocation())
-					if not((Distance < HeroDistance and Angle > 2) or Angle > 2.5) then
+
+					-- if (creepDistance < heroDistance && creepAngle > 2 || creepAngle > 2.5)
+
+					if not( Distance < HeroDistance and Angle > 2 or Angle > 2.5) then
+
 						local MoveDistance = MovementOffset/Bot:GetCurrentMovementSpeed() * 100
+
 						if (Bot:GetCurrentMovementSpeed() - v:GetCurrentMovementSpeed() > DistanceOffset) then -- Get Speed differences and calculate them into the Movedistance
 							MoveDistance = MoveDistance - (Bot:GetCurrentMovementSpeed() - v:GetCurrentMovementSpeed()) / 2
 						end
-						local MovePosition = v:GetXUnitsInFront(math.max(MoveDistance, MoveDistance * Angle))
-						if not (GetLocationToLocationDistance(MovePosition,CreepWayPoint.Pos) - DistanceOffset > HeroDistance) then
-							if not (Angle < 0.2 and (Bot:GetVelocity() ~= Vector(0,0))) then -- Got a bit to long, splittet it in 2 if's
-								print("Blocking")
+
+						local MovePosition = v:GetXUnitsInFront(math.max(MoveDistance, MoveDistance * (Angle)))
+
+						if not( GetLocationToLocationDistance(MovePosition,CreepWayPoint.Pos) - DistanceOffset/2 > HeroDistance) then
+							if not (Angle < 0.2 and (v:GetAnimActivity() == ACTIVITY_RUN)) then -- Got a bit to long, splittet it in 2 if's
+								Bot.BlockCreep = v
 								Bot:Action_MoveToLocation(MovePosition)
 								return
 							end
@@ -414,11 +429,17 @@ function Think()
 					end
 				end
 			end
-
-			if (Bot:GetVelocity() ~= Vector(0,0)) then
-				print(Bot:GetVelocity())
-				Bot:Action_ClearActions(true)
-				print(Bot:GetVelocity())
+			if (Bot:GetAnimActivity() == ACTIVITY_RUN) then
+				Bot:Action_ClearActions( true )
+				return
+			elseif (Bot:GetRotationAngle(CreepWayPoint.Pos) > 1.5) then
+				local Pos = Bot:GetLocation()
+				local Pos2 = CreepWayPoint.Pos
+				if Pos2 ~= nil then
+					local Distance = 10 -- Maybe not 100% correct!
+					local Movepos = Pos+(Distance*(Pos-Pos2):Normalized())
+					Bot:Action_MoveToLocation(Movepos)
+				end
 			end
 
 		elseif #BadCreeps > 0 and Bot.Block ~= nil and Bot.Block then
@@ -428,10 +449,23 @@ function Think()
 			local FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), FrontAmount-0.005-(Bot:GetAttackRange()/80000) )+RandomVector(Bot:GetAttackRange())
 			Bot:Action_MoveToLocation(FrontPos) -- Cant return here or we wont make any actions :/
 		elseif Bot.Block == nil and #Creeps == 0 then
-			FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.20 )
-			if GetUnitToLocationDistance(Bot,FrontPos) > Bot:GetAttackRange() then
-				Bot:Action_MoveToLocation(FrontPos)
+			local FrontPos = Vector(0,0,0)
+			if Bot:GetTeam() == TEAM_DIRE then
+
+			elseif Bot:GetTeam() == TEAM_RADIANT then
+				if Bot:GetAssignedLane() == LANE_TOP then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.21 )
+				elseif Bot:GetAssignedLane() == LANE_MID then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.29 )
+				elseif Bot:GetAssignedLane() == LANE_BOT then
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), 0.23 )
+				end
 			end
+
+			if GetUnitToLocationDistance2D(Bot,FrontPos) > Bot:GetAttackRange() then
+				Bot:Action_MoveToLocation(FrontPos+RandomVector(Bot:GetAttackRange()/2))
+			end
+
 		elseif #Creeps == 0 and Bot.Block then
 			Bot.Block = false
 		end

@@ -5161,11 +5161,12 @@ function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
 		for _,v in pairs(self:GetIncomingTrackingProjectiles()) do
 			if GetUnitToLocationDistance(self,v.location) < Distance then
 				if v.is_attack then
+					local caster = v.caster or v.player;
 					local location = v.location
-					local projSpeed = v.caster:GetAttackProjectileSpeed()
+					local projSpeed = caster:GetAttackProjectileSpeed()
 					local neededTime = GetUnitToLocationDistance(self,location)/projSpeed
 					if neededTime < Time then
-						PhysicDamage = PhysicDamage + self:GetActualIncomingDamage(v.caster:GetAttackDamage() + v.caster:GetBaseDamageVariance(), DAMAGE_TYPE_PHYSICAL)
+						PhysicDamage = PhysicDamage + self:GetActualIncomingDamage(caster:GetAttackDamage() + caster:GetBaseDamageVariance(), DAMAGE_TYPE_PHYSICAL)
 					end
 				end
 			end
@@ -5493,4 +5494,20 @@ end
 -- Got it from https://dev.dota2.com/showthread.php?t=284507
 function GetLocationToLocationDistance (v1, v2) 
 	return math.sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
+end
+
+-- My Code again
+function GetUnitToUnitDistance2D (u1, u2)
+	local Loc1 = u1:GetLocation()
+	local Loc2 = u2:GetLocation()
+	Loc1.z = 0
+	Loc2.z = 0
+	return GetLocationToLocationDistance(Loc1,Loc2)
+end
+
+function GetUnitToLocationDistance2D(u,l)
+	local Loc = u:GetLocation()
+	Loc.z = 0
+	l.z = 0
+	return GetLocationToLocationDistance(Loc,l)
 end
