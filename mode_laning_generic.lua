@@ -373,12 +373,6 @@ function Think()
 			local CreepWayPoint = GetWaypoint(Creeps)
 			if CreepWayPoint == nil or CreepWayPoint.Pos == nil then return end
 
-			Bot.Block = true
-			local Ally = nil
-			if Allies[1] ~= nil then
-				Ally = Allies[1]
-			end
-
 			-- Get creep which is the nearst creep to the Waypoint
 			-- Sort Table based on the distance!
 			for i,v in ipairs(Creeps) do
