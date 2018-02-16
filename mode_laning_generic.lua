@@ -365,7 +365,6 @@ function Think()
 
 		local Creeps = Bot:GetNearbyCreeps(600,false)
 		local BadCreeps = Bot:GetNearbyCreeps(600,true)
-		local Allies = Bot:GetNearbyHeroes(1200,false,BOT_MODE_NONE)
 
 		if #Creeps > 0 and #BadCreeps == 0 and (Bot.Block == nil or Bot.Block) then -- No bad creeps and atleast 1 creep to block
 			-- Get currently aiming waypoint of this creep
