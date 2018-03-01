@@ -3,28 +3,32 @@ module( "mode_generic_laning", package.seeall )
 
 require( GetScriptDirectory().."/basics" ) -- Almost all Hero stats, Roles, etc
 
+
 function Think()
-	Bot = GetBot()
-	-- Now its complicated!
-	-- Supports dont lasthit, only deny
-	-- carry's lasthit and deny (focus mor lasthitting as denying (via a score?))
+	local Bot = GetBot()
 
 	if DotaTime() > 30 then
 		local FrontAmount = GetLaneFrontAmount( Bot:GetTeam(), Bot:GetAssignedLane(), false )
-		local FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), FrontAmount-0.005-(Bot:GetAttackRange()/80000) )+RandomVector(Bot:GetAttackRange())
+		for _,v in pairs(Bot:GetNearbyCreeps(800,false)) do -- GetAmountAlongLane
+			if GetAmountAlongLane(Bot:GetAssignedLane(),v:GetLocation()).amount < FrontAmount then
+				FrontAmount = GetAmountAlongLane(Bot:GetAssignedLane(),v:GetLocation()).amount
+			end
+		end
+		local FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), FrontAmount+0.0004-(Bot:GetAttackRange()/80000) )+RandomVector(Bot:GetAttackRange()/2)
 
-		-- Find creeps (Lowest enemy and move to him and prepare kill if no enemy is near otherwise play saver!)
-
+		----------------------------------------------------------
+		-- Moving Process!
+		-- Move to front if we are not (should we tp in a too large range?)
+		-- Move to creep if we could lasthit it!
 		if (Bot:GetCurrentActionType() == BOT_ACTION_TYPE_NONE or Bot:GetCurrentActionType() == BOT_ACTION_TYPE_IDLE or (Bot:IsAlive() and Bot:GetCurrentActionType() == BOT_ACTION_TYPE_MOVE_TO) and not Bot:IsUsingAbility()) or GetUnitToLocationDistance(Bot,FrontPos) > Bot:GetAttackRange()/2 then	
 			Bot:Action_MoveToLocation(FrontPos) -- Cant return here or we wont make any actions :/
 		elseif GetUnitToLocationDistance(Bot,FrontPos) <= Bot:GetAttackRange()/2 then  -- Anything is false? We just check the Distance and nearby creeps! if they are <= 1 and this creep is under 20% of life go back :3
-			print(GetUnitToLocationDistance(Bot,FrontPos),Bot:GetAttackRange()/2)
 			local creeps = Bot:GetNearbyCreeps(Bot:GetAttackRange()+200,false) -- only our creeps!
 			if #creeps <= 1 then
 				--if creeps[1]:GetHealth()/creeps[1]:GetMaxHealth() <= 0.5 then
 					print("Falling back, amount before: "..FrontAmount)
 					FrontAmount = GetLaneFrontAmount( Bot:GetTeam(), Bot:GetAssignedLane(), true )
-					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), FrontAmount-0.4 )+RandomVector(Bot:GetAttackRange())
+					FrontPos = GetLocationAlongLane( Bot:GetAssignedLane(), FrontAmount-0.4 )+RandomVector(Bot:GetAttackRange()/2)
 					Bot:Action_MoveToLocation(FrontPos)
 					return
 				--end
@@ -33,9 +37,9 @@ function Think()
 
 		local towerRange = GetTower(Bot:GetTeam(),TOWER_BASE_2):GetAttackRange() -- be sure the tower is not destroyed!
 		local posAmount = FrontAmount-0.05
-		for _,v in pairs(Bot:GetNearbyTowers(towerRange,true)) do
+		for _,v in pairs(Bot:GetNearbyTowers(towerRange+200,true)) do
 			local Pos = GetLocationAlongLane( Bot:GetAssignedLane(), posAmount)
-			if GetUnitToLocationDistance(v,Pos) < towerRange+Bot:GetAttackRange() then
+			if GetUnitToLocationDistance(v,Pos) < towerRange then
 				posAmount = posAmount-0.001
 				Pos = GetLocationAlongLane( Bot:GetAssignedLane(), posAmount)
 				print("Moving out of tower range!")
@@ -44,11 +48,16 @@ function Think()
 			end
 		end
 
+		-- End of Moving stuff
+		----------------------------------------------------------
+		-- Bot laning GENERIC! Some Bots must get a own laning mode ;)
+
+		local range = Bot:GetAttackRange()
+
 		local npcName = Bot:GetUnitName()
 		local BotStats = HeroRole[npcName] -- All bot stats (which we will need!)
-		if BotStats.support >= 2 then -- Hard-Support! Dont last hit, only deny, harass enemies and pull camp (if on safelane)
-			local range = Bot:GetAttackRange()
-			
+
+		local function Deny()
 			for _,v in pairs(Bot:GetNearbyCreeps(range+200,false)) do
 				local dist = GetUnitToUnitDistance(v,Bot)
 				local neededTime = Bot:GetAttackPoint()
@@ -65,7 +74,9 @@ function Think()
 					end
 				end
 			end
+		end
 
+		local function HarassNormal()
 			-- Still here? Not returned? Harass enemies if possible!
 			if Bot:GetLastAttackTime() - GameTime() + Bot:GetSecondsPerAttack() < 0 then -- locked and loaded
 				local Enemy = nil
@@ -79,15 +90,25 @@ function Think()
 					Bot:Action_AttackUnit(Enemy,true)
 				end
 			end
+		end
 
+		local function HarassAbility()
 			if not Bot:NeedMana() then -- Do we need mana (cannot cast our most expensive spell) than dont harass!
 				-- Look which spell makes the most damage (at all on heroes/possible lasthits)
 				local effectiveness = 0
 				local castAbility = nil
 				for i = 0, 23 do -- only 1st 3 abilities or we maby waste a ultimate
 					local ability = Bot:GetAbilityInSlot(i)
+					if ability ~= nil then
+						local dmg = ability:GetAbilityDamageCustom()
+						if dmg > 0 then
+							print("Damage: ",dmg,ability:GetName(),Bot:GetUnitName())
+						end
+					end
 					if ability ~= nil and ability:GetName() ~= "" and ability:GetCastRange() ~= nil and ability:GetCastRange() >= 200 and (ability:GetBehavior() ~= nil and (ability:GetBehavior() == ABILITY_BEHAVIOR_POINT or (ability:GetBehavior() == ABILITY_BEHAVIOR_UNIT_TARGET and ability:GetTargetTeam() == ABILITY_TARGET_TEAM_ENEMY and ability:GetTargetType()%3 == 1))) then
 						-- local dmg = ability:GetAbilityDamage() -- Not working at all.... Valve fucked somthing up here!
+						-- Can We avoid this via our epic basic.lua? I think so ^^
+
 						local manacost = ability:GetManaCost()
 						--if dmg/manacost > effectiveness then
 							castAbility = ability
@@ -112,50 +133,104 @@ function Think()
 					end
 				end
 			end
+		end
+
+		local function Lasthit()
+			if BotStats.support >= 1 then
+				CanLastHit = true
+				for _,v in pairs(Bot:GetNearbyHeroes(1599,false,BOT_MODE_NONE)) do -- Maxrange search for teammates!
+					for _,v2 in pairs(Bot:GetNearbyCreeps(range+200,true)) do
+						local range = v:GetAttackRange()
+						local dist = GetUnitToUnitDistance(v,v2)
+						local neededTime = v:GetAttackPoint()
+						if dist > range then
+							local tempDist = dist-range
+							neededTime = neededTime+(tempDist/v:GetCurrentMovementSpeed())+1
+						end
+						neededTime = neededTime+(range/v:GetAttackProjectileSpeed())+1
+						if v2:GetIncommingDamageInTime(neededTime).All < v2:GetHealth() then
+							if v2:GetHealth()-v2:GetIncommingDamageInTime(neededTime).All <= v:GetAttackDamage() then
+								CanLastHit = false
+							end
+						end
+					end
+				end
+				if CanLastHit then
+					for _,v in pairs(Bot:GetNearbyCreeps(range+200,true)) do
+						local dist = GetUnitToUnitDistance(v,Bot)
+						local neededTime = Bot:GetAttackPoint()
+						if dist > range then
+							local tempDist = dist-range
+							neededTime = neededTime+(tempDist/Bot:GetCurrentMovementSpeed())+1
+						end
+						neededTime = neededTime+(range/Bot:GetAttackProjectileSpeed())+1
+						if v:GetIncommingDamageInTime(neededTime).All < v:GetHealth() then
+							if v:GetHealth()-v:GetIncommingDamageInTime(neededTime).All <= Bot:GetAttackDamage() then
+								print(Bot:GetUnitName().." lasthits")
+								Bot:Action_AttackUnit(v,true)
+								return
+							end
+						end
+					end
+				end
+			else
+				for _,v in pairs(Bot:GetNearbyCreeps(range+200,true)) do
+					local dist = GetUnitToUnitDistance(v,Bot)
+					local neededTime = Bot:GetAttackPoint()
+					if dist > range then
+						local tempDist = dist-range
+						neededTime = neededTime+(tempDist/Bot:GetCurrentMovementSpeed())+1
+					end
+					neededTime = neededTime+(range/Bot:GetAttackProjectileSpeed())+1
+					if v:GetIncommingDamageInTime(neededTime).All < v:GetHealth() then
+						if v:GetHealth()-v:GetIncommingDamageInTime(neededTime).All <= Bot:GetAttackDamage() then
+							print(Bot:GetUnitName().." lasthits")
+							Bot:Action_AttackUnit(v,true)
+							return
+						end
+					end
+				end
+			end
+		end
+
+		if BotStats.support >= 2 then -- Hard-Support! Dont last hit, only deny, harass enemies and pull camp (if on safelane)
+			
+			Deny()
+
+			HarassNormal()
+
+			HarassAbility()
+
+			-- PullLane()
+
+			-- StackCamp()
+
+			Lasthit() -- Seems to be strange, Support lvl 2 with lasthitting? But he only lh's when NO better unit it on lane ^^
+			
 
 			-- Still here o.O??
 			-- Stack or pull,.... but this i dont implement now!
 		elseif BotStats.support == 1 then -- Soft-Support, can lasthit if carry dont get it, also harass enemies and deny, do not have to pull or stack
-			-- Shitty softsupport. You will get the last one :3 Muhahah ^-^
+			Deny()
+
+			HarassNormal()
+
+			HarassAbility()
+
+			Lasthit()
 
 		else -- No support, you will get all the farm :3
-			local range = Bot:GetAttackRange()
-			for _,v in pairs(Bot:GetNearbyCreeps(range+200,true)) do
-				local dist = GetUnitToUnitDistance(v,Bot)
-				local neededTime = Bot:GetAttackPoint()
-				if dist > range then
-					local tempDist = dist-range
-					neededTime = neededTime+(tempDist/Bot:GetCurrentMovementSpeed())
-				end
-				neededTime = neededTime+(range/Bot:GetAttackProjectileSpeed())
-				if v:GetIncommingDamageInTime(neededTime).All < v:GetHealth() then
-					if v:GetHealth()-v:GetIncommingDamageInTime(neededTime).All <= Bot:GetAttackDamage() then
-						print(Bot:GetUnitName().." lasthits")
-						Bot:Action_AttackUnit(v,true)
-						return
-					end
-				end
-			end
-			-- No lasthits? Ok... Deny than :)
-			for _,v in pairs(Bot:GetNearbyCreeps(range+200,false)) do
-				local dist = GetUnitToUnitDistance(v,Bot)
-				local neededTime = Bot:GetAttackPoint()
-				if dist > range then
-					local tempDist = dist-range
-					neededTime = neededTime+(tempDist/Bot:GetCurrentMovementSpeed())
-				end
-				neededTime = neededTime+(range/Bot:GetAttackProjectileSpeed())
-				if v:GetIncommingDamageInTime(neededTime).All < v:GetHealth() then
-					if v:GetHealth()-v:GetIncommingDamageInTime(neededTime).All <= Bot:GetAttackDamage() then
-						print(Bot:GetUnitName().." deny")
-						Bot:Action_AttackUnit(v,true)
-						return
-					end
-				end
-			end
+			
+			Lasthit()
+
+			Deny()
+
+			HarassNormal()
+
+			HarassAbility()
 			-- Wow? Still no action? Hopefully Dota will controll you now ... :/
 		end
-	else -- DotaTime() < 30 -> Blocking!
+	else
 		-- Good Blocks require good work, jsut making a huge table with all creep waypoints i found on the map, eto gg!
 		local WayPoints = { -- Required for perfect block (i think)
 			[TEAM_RADIANT] = {
@@ -467,6 +542,40 @@ function Think()
 
 		elseif #Creeps == 0 and Bot.Block then
 			Bot.Block = false
+		end
+
+		if Bot.SayGL == nil then
+			if RandomInt(1, 1000) == 429 then
+				local LuckTexts = { -- Make them some wrong hopes muhahah ^-^
+					"Your success depends on your faith. Good luck with being faithful!",
+					"Never give up, because luck likes winners, not losers!",
+					"Your faith will lead you to your success. Good luck!",
+					"Remember the days when you have failed? You’ve never give up and still stand up. Good luck!",
+					"The road is tough. But the driver is tougher. Good luck!",
+					"You can have it a try. If you’ll succeed, good. If not, better. Because everything happens for a reason.. There will come something better. Good luck!",
+					"Good luck in your game! I know yours will be the winning team. I am pretty sure about it.",
+					"May good luck be on your side today Win this game with flying colors!",
+					"Be positive and everything will follow. Good luck!",
+					"Go on, and never stop. Lead the way and you will get your way done!",
+					"Just be yourself and the rest will follow. Good luck!",
+					"The best people make the best effort to unleash the best things out of their life. Good luck!",
+					"Whatever happens, We’ll party later. Sounds good? Do your thing first. Good luck!"
+				}
+
+				Bot.SayGL = true
+				Bot:ActionImmediate_Chat(LuckTexts[RandomInt(1, #LuckTexts)],true)
+			end
+		end
+		if DotaTime() == -59 then
+			local lane = "unknown"
+			if Bot:GetAssignedLane() == LANE_BOT then
+				lane = "bottom"
+			elseif Bot:GetAssignedLane() == LANE_TOP then
+				lane = "top"
+			elseif Bot:GetAssignedLane() == LANE_MID then
+				lane = "middle"
+			end
+			Bot:ActionImmediate_Chat("I am going to the "..lane.." lane.",false)
 		end
 	end
 end

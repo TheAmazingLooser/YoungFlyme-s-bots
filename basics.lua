@@ -5161,10 +5161,7 @@ function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
 		for _,v in pairs(self:GetIncomingTrackingProjectiles()) do
 			if GetUnitToLocationDistance(self,v.location) < Distance then
 				if v.is_attack then
-					local caster = v.caster or v.player;
-					if caster == 0 then
-
-					end
+					local caster = v.caster or v.player
 					local location = v.location
 					local projSpeed = caster:GetAttackProjectileSpeed()
 					local neededTime = GetUnitToLocationDistance(self,location)/projSpeed
@@ -5196,7 +5193,7 @@ function CDOTA_Bot_Script:GetIncommingDamageInTime(Time)
 		end
 	end
 
-	-- Same with heroes for OPTIMA lasthitting :3 muhaha ^-^
+	-- Same with heroes for OPTIMAL lasthitting :3 muhaha ^-^
 	for _,v in pairs(Bot:GetNearbyHeroes( 1600, true,BOT_MODE_NONE)) do
 		if v:GetAttackTarget() == self then -- we are his target!
 			local CurrentTime = GameTime()
@@ -5513,4 +5510,18 @@ function GetUnitToLocationDistance2D(u,l)
 	Loc.z = 0
 	l.z = 0
 	return GetLocationToLocationDistance(Loc,l)
+end
+
+---------------------------------------------------------------
+-- Ability support!
+function CDOTABaseAbility_BotScript:GetAbilityDamageCustom() -- This overrides the original one!
+	local name = self:GetName()
+	local damage = self:GetSpecialValueInt("AbilityDamage")
+	if damage == nil or damage == 0 then
+		damage = self:GetSpecialValueFloat("damage")
+	end
+	if damage == nil or damage == 0 then
+		damage = self:GetSpecialValueInt("damage")
+	end
+	return 0
 end
